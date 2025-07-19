@@ -1,0 +1,364 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Statistics</title><script src="https://cdn.jsdelivr.net/gh/lukastautz/ltstats@v1.0/apexcharts.min.js" integrity="sha256-TOd448JQDA7fihR5yvia3panY32rjYrcc8jyRSpvrtk=" crossorigin="anonymous"></script><style>a{text-decoration:none}a:hover{text-decoration:underline}.controls,button,h1,footer{user-select:none}button,h1 a{cursor:pointer;color:#ecf0f1;margin-right:.5rem}button,h1{background-color:#2c3e50}.chart,body{padding:15px}.chart,.item,pre{background-color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.1)}.title,.value{font-weight:700}*{margin:0;padding:0;box-sizing:border-box;font-family:sans-serif}body{background-color:#ebebeb;color:#333}.dashboard{max-width:100%;margin:0 auto}.chart,.controls,h1{margin-bottom:15px}h1{color:#ecf0f1;padding:12px;font-size:1.5rem;border-radius:5px}h1 a:nth-of-type(2){float:right;margin-right:0}.controls{display:flex;flex-wrap:wrap;gap:5px;margin-top:1rem}button{border:none;padding:8px 12px;border-radius:5px;font-size:.9rem;transition:background-color .15s}button:hover{background-color:#34495e}button.active{background-color:#1c6bb8}button:disabled{opacity:.5;cursor:not-allowed}.navigation{margin-left:auto}.chart{border-radius:5px}#offline-text{margin-left:1rem;color:#f44336}.item,pre{padding:8px;border-radius:3px}.error,.offline .status-dot{background-color:#f44336}.title{margin-bottom:4px}.value{color:#00a0cc}.error{color:#fff;padding:10px;border-radius:5px;margin-bottom:15px}footer,footer a{text-align:center;margin-top:1rem;color:#999!important;font-size:.7rem;font-weight:400}footer a:hover{color:#666!important}@media (prefers-color-scheme:dark){body{background-color:#121212;color:#e0e0e0}.chart,.item,pre{background-color:#282828}button,h1{background-color:#233443}footer,footer a{color:#555!important}footer a:hover{color:#777!important}}.apexcharts-svg{padding-top:.25rem}.status-dot{display:inline-block;width:1rem;height:1rem;border-radius:50%;margin-left:1rem;background-color:#4caf50}.hidden,pre:empty{display:none}.container-div{display:grid;grid-template-columns:1fr auto;align-items:start}pre{width:fit-content;height:fit-content;position:relative}@supports (container-type:inline-size){.container{container-type:inline-size}@container (inline-size < 95rem){.container-div{grid-template-columns:1fr}pre{width:100%;margin-top:1rem}}}@supports not (container-type:inline-size){@media (aspect-ratio < 16/9){.container-div{grid-template-columns:1fr}pre{width:100%;margin-top:1rem}}}.container-content{display:flex;flex-direction:column;gap:10px;min-width:0}.row{display:grid;gap:10px;align-items:stretch}.row-small{grid-template-columns:repeat(auto-fill,minmax(min(100%,10.5rem),1fr))}.row-large{grid-template-columns:repeat(auto-fill,minmax(min(100%,13rem),1fr))}</style></head><body><div class="dashboard"><h1 id="top" class="hidden"><a onclick="window.history.back();" title="Back">&larr;</a> <span id="title">Loading</span> <span class="status-dot"></span><span id="offline-text"></span><a href="/admin">Admin area</a></h1><div class="error" style="display:none">Fetching data failed!</div><div class="container"><div class="container-div"><div class="container-content"><div class="row row-small" id="details"></div><div class="row row-small" id="stats"></div><div class="row row-large" id="io-stats"></div></div><pre id="notes"></pre></div></div></div><div class="controls"><div><button data-period="6h" class="active">6 hours</button><button data-period="12h">12 hours</button><button data-period="24h">24 hours</button><button data-period="3d">3 days</button><button data-period="7d">7 days</button><button data-period="14d">14 days</button><button data-period="28d">28 days</button><button data-period="3m">3 months</button><button data-period="6m">6 months</button><button data-period="1y">1 year</button><button data-period="2y">2 years</button></div><div class="navigation"><button id="older">← Older</button><button id="newer" disabled>Newer →</button></div></div><div class="chart"><div id="percentChart"></div></div><div class="chart"><div id="networkChart"></div></div><div class="chart"><div id="diskChart"></div></div><script>
+var page = window.location.pathname.replace('/monitor/', '');
+if (page.endsWith('/'))
+    page = page.slice(0, -1);
+
+var state = {
+    period: '6h',
+    back: 0,
+    data: {},
+    charts: {},
+    colors: {
+        cpu: '#0c4d85',
+        iowait: '#fac800',
+        steal: '#fa0000',
+        ram: '#00ff00',
+        swap: '#40e0d0',
+        disk: '#8b75d7',
+        rx: '#427a2a',
+        tx: '#a67016',
+        read: '#326b41',
+        write: '#db624d'
+    },
+    dark: window.matchMedia('(prefers-color-scheme:dark)').matches
+};
+
+var sizes =  'KMGTPE';
+
+if (!state.dark) {
+    state.colors.ram = '#008a00';
+    state.colors.swap = '#1d9f95';
+}
+
+function formatBytes(bytes) {
+    if (bytes === 0)
+        return '0 B';
+    var i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return parseFloat((bytes / Math.pow(1024, i)).toFixed(2)) + ' ' + (i > 0 ? sizes[i - 1] : '') + 'B';
+}
+
+function formatNetworkSpeed(bytesPerSecond) {
+    if (bytesPerSecond === 0)
+        return '0 bit/s';
+    var bitsPerSecond = bytesPerSecond * 8;
+    var i = Math.floor(Math.log(bitsPerSecond) / Math.log(1000));
+    return parseFloat((bitsPerSecond / Math.pow(1000, i)).toFixed(2)) + ' ' + (i > 0 ? sizes[i - 1] : '') + 'bit/s';
+}
+
+var formatUptime = seconds => `${Math.floor(seconds / (3600 * 24))}d ${Math.floor((seconds % (3600 * 24)) / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+
+var $ = id => document.getElementById(id);
+
+function merge(a, b) {
+  for (key of Object.keys(b)) {
+    if (a[key] === undefined)
+        a[key] = b[key];
+    else
+        merge(a[key], b[key]);
+  }
+}
+
+function initializeCharts() {
+    var chartOptions = {
+        chart: {
+            type: 'line',
+            height: 350,
+            toolbar: {
+                show: true,
+                tools: {
+                    download: false,
+                    selection: false,
+                    zoom: true,
+                    zoomin: false,
+                    zoomout: false,
+                    pan: true,
+                    reset: true
+                }
+            },
+            animations: {
+                enabled: true
+            }
+        },
+        dataLabels: {
+            enabled: false
+        },
+        stroke: {
+            curve: 'straight',
+            width: 2
+        },
+        grid: {
+            borderColor: state.dark ? '#555' : '#e0e0e0'
+        },
+        xaxis: {
+            type: 'datetime',
+            labels: {
+                datetimeUTC: false
+            }
+        },
+        tooltip: {
+            x: {
+                format: 'dd MMM HH:mm'
+            }
+        },
+        theme: {
+            mode: state.dark ? 'dark' : 'light'
+        },
+        legend: {
+            position: 'top',
+            horizontalAlign: 'right',
+            onItemClick: {
+                toggleDataSeries: true
+            }
+        },
+        series: [],
+        title: {
+            align: 'left'
+        },
+        yaxis: {
+            min: 0
+        },
+        markers: {
+            size: 0
+        }
+    };
+    [
+        [{
+            title: {
+                text: 'Usage (%)',
+            },
+            yaxis: {
+                title: {
+                    text: 'Usage (%)'
+                }
+            }
+        }, 'resources', 'percentChart'],
+        [{
+            title: {
+                text: 'Network Usage',
+            },
+            yaxis: {
+                title: {
+                    text: 'Speed'
+                },
+                labels: {
+                    formatter: formatNetworkSpeed
+                }
+            },
+            tooltip: {
+                y: {
+                    formatter: formatNetworkSpeed
+                }
+            }
+        }, 'network', 'networkChart'],
+        [{
+            title: {
+            text: 'Disk IO',
+            },
+            yaxis: {
+                title: {
+                    text: 'Speed'
+                },
+                labels: {
+                    formatter: val => formatBytes(val) + '/s'
+                },
+            },
+            tooltip: {
+                y: {
+                    formatter: val => formatBytes(val) + '/s'
+                }
+            }
+        }, 'disk', 'diskChart']
+    ].forEach(chart => {
+        merge(chart[0], chartOptions);
+        state.charts[chart[1]] = new ApexCharts($(chart[2]), chart[0]);
+        state.charts[chart[1]].render();
+    });
+}
+
+function updateCharts() {
+    var data = [], pos = 0, charts = document.getElementsByClassName('chart');
+    Object.keys(state.data.data).forEach(timestamp => state.data.data[timestamp].forEach((value, index) => {
+        if (data[index] === undefined)
+            data[index] = [];
+        data[index].push([timestamp * 1000, value]);
+    }));
+    [
+        {
+            graph: state.charts.resources,
+            data: [
+                [0, 'CPU', state.colors.cpu],
+                [1, 'IOwait', state.colors.iowait],
+                [2, 'Steal', state.colors.steal],
+                [3, 'RAM', state.colors.ram],
+                [4, 'Swap', state.colors.swap],
+                [5, 'Disk', state.colors.disk]
+            ]
+        },
+        {
+            graph: state.charts.network,
+            data: [
+                [6, 'Download', state.colors.rx],
+                [7, 'Upload', state.colors.tx]
+            ]
+        },
+        {
+            graph: state.charts.disk,
+            data: [
+                [8, 'Read IO', state.colors.read],
+                [9, 'Write IO', state.colors.write]
+            ]
+        }
+    ].forEach((graph, index) => {
+        var graphData = [], graphColors = [];
+        graph.data.forEach(element => {
+            if (state.data.hidden[element[0]] === true)
+                return;
+            graphData.push({ name: element[1], data: data[pos] });
+            graphColors.push(element[2]);
+            ++pos;
+        });
+        if (graphData.length === 0)
+            charts[index].style.display = 'none';
+        else {
+            charts[index].style = '';
+            graph.graph.updateOptions({
+                series: graphData,
+                colors: graphColors
+            });
+        }
+    });
+   updateStatistics();
+}
+
+function updateStatistics() {
+    var timestamps = Object.keys(state.data.data), container = $('stats'), pos = 0, current = id => state.data.details.length !== 2 ? state.data.details[id] : false;
+    container.innerHTML = '';
+    [
+        { cur: current(5), name: 'CPU', type: 0, color: state.colors.cpu },
+        { cur: current(6), name: 'IOwait', type: 0, color: state.colors.iowait },
+        { cur: current(7), name: 'Steal', type: 0, color: state.colors.steal },
+        { cur: current(9), name: 'RAM', type: 0, color: state.colors.ram },
+        { cur: current(11), name: 'Swap', type: 0, color: state.colors.swap },
+        { cur: current(13), name: 'Disk', type: 0, color: state.colors.disk },
+        { cur: current(14), name: `Download (${state.data.traffic ? formatBytes(state.data.traffic[0]) : ''})`, type: 1, color: state.colors.rx },
+        { cur: current(15), name: `Upload (${state.data.traffic ? formatBytes(state.data.traffic[1]) : ''})`, type: 1, color: state.colors.tx },
+        { cur: current(16), name: `Read IO (${state.data.io ? formatBytes(state.data.io[0]) : ''})`, type: 2, color: state.colors.read },
+        { cur: current(17), name: `Write IO (${state.data.io ?  formatBytes(state.data.io[1]) : ''})`, type: 2, color: state.colors.write }
+    ].forEach((item, index) => {
+        if (item.name.startsWith('Download')) {
+            container = $('io-stats');
+            container.innerHTML = '';
+        }
+        if (state.data.hidden[index])
+            return;
+        var element = document.createElement('div');
+        element.className = 'item';
+        var formatter = [data => data.toFixed(2) + '%', data => formatNetworkSpeed(data), data => formatBytes(data) + '/s'][item.type];
+        element.innerHTML = `<div class="title" style="color:${item.color}">${item.name}</div><div>Average: <span class="value">${formatter(state.data.avg[pos])}</span></div><div>Maximum: <span class="value">${formatter(state.data.max[pos])}</span></div>`;
+        if (state.data.details.length != 2)
+            element.innerHTML += `<div>Current: <span class="value">${formatter(item.cur)}</span></div>`;
+        container.appendChild(element);
+        ++pos;
+    });
+}
+
+var offlineString = seconds => seconds === null ? 'Offline' : (seconds < 3600 ? `Offline for ${Math.floor(seconds / 60)} minutes` : `Offline for ${Math.floor(seconds / 3600)} hours, ${Math.floor((seconds % 3600) / 60)} minutes`);
+
+function fetchData() {
+    fetch(`/api/data/${page}/${state.period}/${state.back}`)
+    .then(response => {
+        if (response.status != 200)
+            throw new Error();
+        return response.json();
+    })
+    .then(data => {
+        document.body.querySelector('.error').style.display = "none";
+        state.data = data;
+        updateCharts();
+        var allTime = (name, data, i, o) => `<div class="item"><div class="title">All-time ${name}</div><b>${i}</b>: <span class="value">${formatBytes(data[2])}</span><br><b>${o}</b>: <span class="value">${formatBytes(data[3])}</span></div>`, detailsHTML = '', title = `Statistics - ${data.details[0]}`, item = (title, value) => `<div class="item"><div class="title">${title}</div><span class="value">${value}</span></div>`;
+        if (data.traffic)
+            detailsHTML += allTime('traffic', data.traffic, 'RX', 'TX');
+        if (data.io)
+            detailsHTML += allTime('IO', data.io, 'Read', 'Written');
+        $('title').innerHTML = title;
+        document.title = title;
+        if (data.details.length === 2) {
+            $('top').setAttribute('class', 'offline');
+            $('offline-text').innerHTML = offlineString(data.details[1]);
+        } else {
+            var [, kernel, cpu, cores, uptime,,,, ram,, swap,, disk] = data.details;
+            $('offline-text').innerHTML = '';
+            if (kernel !== -1)
+                detailsHTML += item('Kernel', kernel);
+            if (cores !== -1)
+                detailsHTML += item(`${cores} core${cores === 1 ? '' : 's'}`, cpu !== -1 ? `<span style="font-size:.7rem">${cpu}</span>` : '');
+            else if (cpu !== -1)
+                detailsHTML += item(`? core(s)`, `<span style="font-size:.7rem">${cpu}</span>`);
+            if (uptime !== -1)
+                detailsHTML += item('Uptime', formatUptime(uptime));
+            if (ram !== -1 || swap !== -1 || disk !== -1) {
+                detailsHTML += '<div class="item">';
+                [
+                    [ram, 'RAM'],
+                    [swap, 'Swap'],
+                    [disk, 'Disk']
+                ].forEach(element => {
+                    if (element[0] !== -1)
+                        detailsHTML += `<b>${element[1]}</b>: <span class="value">${formatBytes(element[0])}</span><br>`;
+                });
+            }
+            $('top').setAttribute('class', '');
+        }
+        if (data.notes)
+            $('notes').innerHTML = data.notes;
+        $('details').innerHTML = detailsHTML;
+        $('newer').disabled = state.back === 0;
+    })
+    .catch(() => document.body.querySelector('.error').style.display = 'block');
+}
+
+function initialize() {
+    window.addEventListener('wheel', function(event) {
+        event.stopImmediatePropagation();
+    }, true);
+    initializeCharts();
+    var buttons = document.querySelectorAll('[data-period]');
+    buttons.forEach(button => {
+        button.addEventListener('click', () => {
+            buttons.forEach(b => b.classList.remove('active'));
+            button.classList.add('active');
+            state.period = button.getAttribute('data-period');
+            state.back = 0;
+            fetchData();
+        });
+    });
+    $('older').addEventListener('click', () => {
+        ++state.back;
+        fetchData();
+    });
+    $('newer').addEventListener('click', () => {
+        if (state.back > 0) {
+            --state.back;
+            fetchData();
+        }
+    });
+    fetchData();
+    setInterval(() => {
+        if (state.back === 0 && (typeof document.visibilityState !== 'string' || document.visibilityState !== 'hidden'))
+            fetchData();
+    }, 30000);
+}
+
+document.addEventListener('DOMContentLoaded', initialize);
+document.addEventListener('visibilitychange', () => {
+    if (typeof document.visibilityState === 'string' && document.visibilityState !== 'hidden') {
+        fetchData();
+    }
+});
+document.addEventListener('keydown', e => {
+    if (e.key === 'F5') {
+        e.preventDefault();
+        fetchData();
+    }
+});
+</script><footer>Powered by <a href="https://ltstats.de">LTstats</a></footer></body></html>
