@@ -6,7 +6,7 @@ bool body_read_cont;
 json_object *parse_body_json(void) {
     uint16 body = get_http_body();
     body_read_cont = false;
-    if (!body || len - body < 2 || !(body_tokener = json_tokener_new()))
+    if (!body || body > len || !(body_tokener = json_tokener_new()))
         return NULL;
     http_buf[len] = '\0';
     json_object *json_body = json_tokener_parse_ex(body_tokener, http_buf + body, len - body);
@@ -64,15 +64,17 @@ Admin APIs:
 void admin_process_request(uint8 state) {
     if (state == ADMIN_STATE_LOGIN) { // POST /admin/login
         json_object *body = parse_body_json(), *hash;
+        while (!body && body_read_cont && sock_ready(client, false) && (len = read(client, http_buf, sizeof(http_buf) - 1)) > 0)
+            body = parse_additional();
         const char *hash_str;
         if (!body || !json_object_object_get_ex(body, "hash", &hash) || !json_object_is_type(hash, json_type_string) || json_object_get_string_len(hash) != 64 || !(hash_str = json_object_get_string(hash)))
             return;
         if (memcmp(hash_str, admin_hash, 64)) { // indicate error to the client
-            client_write("HTTP/1.1 401\r\n\r\n");
+            client_write("HTTP/1.1 401\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
             return;
         }
         uint16 len = 0;
-        str_append(http_buf, &len, "HTTP/1.1 200\r\nSet-Cookie: hash=");
+        str_append(http_buf, &len, "HTTP/1.1 200\r\nContent-Length: 0\r\nConnection: close\r\nSet-Cookie: hash=");
         str_append_len(http_buf, &len, hash_str, 64);
         str_append(http_buf, &len, "; HttpOnly; Max-Age=7889400; SameSite=Strict; Secure; Path=/\r\n\r\n");
         client_write_len(http_buf, len);
@@ -80,7 +82,7 @@ void admin_process_request(uint8 state) {
     }
     if (http_buf_compare("", "GET /admin/logged_in")) {
         __atomic_store_n(admin_proc, false, __ATOMIC_RELAXED);
-        client_write("HTTP/1.1 200\r\n\r\n");
+        client_write("HTTP/1.1 200\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
     } else if (http_buf_compare("", "GET /admin/data")) {
         __atomic_store_n(admin_proc, false, __ATOMIC_RELAXED);
         client_write_json(data_json);
@@ -102,7 +104,7 @@ void admin_process_request(uint8 state) {
         json_time = json_object_get_uint64(json_time_obj);
         if (json_time && json_time != current_json_time) {
             __atomic_store_n(admin_proc, false, __ATOMIC_RELAXED);
-            client_write("HTTP/1.1 409\r\n\r\n");
+            client_write("HTTP/1.1 409\r\nContent-Length: 0\r\n\r\nConnection: close\r\n");
             return;
         }
         json_object_set_uint64(json_time_obj, time(NULL));
@@ -124,7 +126,7 @@ void admin_process_request(uint8 state) {
         __atomic_store_n(admin_proc, false, __ATOMIC_RELAXED);
         __atomic_store_n(data_json_changed, true, __ATOMIC_RELAXED);
         uint16 len = 0;
-        str_append(http_buf, &len, "HTTP/1.1 200\r\n");
+        str_append(http_buf, &len, "HTTP/1.1 200\r\nContent-Length: 0\r\nConnection: close\r\n");
         if (memcmp(hash_str, admin_hash, 64)) {
             str_append(http_buf, &len, "Set-Cookie: hash=");
             str_append_len(http_buf, &len, hash_str, 64);

@@ -53,7 +53,7 @@ typedef struct PACKED {
     uint64 total;
 } jiffies_spent_t;
 
-char file_buf[49152], http_buf[512 + sizeof(net_header_t) + sizeof(details_t) + (CONFIG_UPLOAD_MAX_N_STATS_AT_ONCE * sizeof(stats_t))], response_buf[256], iobuf[BR_SSL_BUFSIZE_BIDI], *host;
+char file_buf[49152], http_buf[512 + sizeof(net_header_t) + sizeof(details_t) + (CONFIG_UPLOAD_MAX_N_STATS_AT_ONCE * sizeof(stats_t))], response_buf[1024], iobuf[BR_SSL_BUFSIZE_BIDI], *host;
 details_t details;
 stats_t stats[CONFIG_MAX_CACHED];
 uint32 stats_count = 0, stats_pos = (uint32)-1;

@@ -352,7 +352,7 @@ bool client_sendfile(int fd, uint32 len) {
 void client_http_sendfile(int fd) {
     uint16 len = 0;
     uint32 file_size = fd_size(fd);
-    str_append(http_buf, &len, "HTTP/1.1 200\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: ");
+    str_append(http_buf, &len, "HTTP/1.1 200\r\nContent-Type: text/html; charset=UTF-8\r\nConnection: close\r\nContent-Length: ");
     str_append_uint(http_buf, &len, file_size);
     str_append(http_buf, &len, "\r\n\r\n");
     if (!client_write_len(http_buf, len))
@@ -364,7 +364,7 @@ void client_write_json(json_object *json) {
     size_t json_len;
     const char *json_str = json_object_to_json_string_length(json, JSON_C_TO_STRING_PLAIN, &json_len);
     uint16 len = 0;
-    str_append(http_buf, &len, "HTTP/1.1 200\r\nContent-Type: application/json\r\nCache-Control: no-store\r\nContent-Length: ");
+    str_append(http_buf, &len, "HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\nCache-Control: no-store\r\nContent-Length: ");
     str_append_uint(http_buf, &len, json_len);
     str_append(http_buf, &len, "\r\n\r\n");
     if (json_len + len > sizeof(http_buf)) {
@@ -710,7 +710,13 @@ int main(int argc, char **argv) {
             if ((uint32)len < strlen("POST /submit HTTP/1.1\r\nHost:\r\n\r\n") + sizeof(net_header_t) + sizeof(details_t) + sizeof(stats_t))
                 goto cont;
             body = get_http_body();
-            if (!body || (uint32)len < body + sizeof(net_header_t) + sizeof(details_t))
+            if (!body)
+                goto cont;
+            if (len == body && sock_ready(client, true)) {
+                len = read(client, http_buf, sizeof(http_buf));
+                body = 0;
+            }
+            if ((uint32)len < body + sizeof(net_header_t) + sizeof(details_t))
                 goto cont;
             ptr_header = (net_header_t *)(http_buf + body);
             for (uint8 i = 0; i < 32; ++i)
@@ -774,7 +780,7 @@ int main(int argc, char **argv) {
                 }
 success:
                 if (sock_ready(client, false))
-                    write(client, SLEN("HTTP/1.1 200\r\n\r\n1"));
+                    write(client, SLEN("HTTP/1.1 200\r\nContent-Length: 1\r\nConnection: close\r\n\r\n1"));
             }
             goto cont;
         }

@@ -34,13 +34,14 @@ EOC
 chmod 600 /status/msmtprc
 if [ -f /status/version ]; then
     if [ "$(cat /status/version)" != "1.0" ]; then
+        echo 1.1 > /status/version
         : # handle conversions
     fi
 else
-    echo 1.0 > /status/version
+    echo 1.1 > /status/version
 fi
 if [ ! -f /status/data.json ]; then
-    echo "{\"time\":$(date +%s),\"hash\":\"$(printf admin | sha256sum | sed -E 's/\s+-//')\",\"monitors\":{},\"pages\":{\"main\":[\"Main page\",true,[]]},\"hide\":[],\"notifications\":{\"every\":60,\"exec\":[\"/bin/bash\",\"/status/msmtp.sh\",\"NAME\",\"TYPE\",\"STILL_MET\"],\"sample\":30},\"copy\":\"curl -s https://ltstats.de/v1.0/systemd:agent | tee install.sh | sha256sum -c <(echo 317b6295841f24465244963b4c97479737564318967e0b9e43a07f16915df675 -) && bash install.sh DOMAIN TOKEN ntp ADDITIONAL_PATHS # NAME\"}" > /status/data.json
+    echo "{\"time\":$(date +%s),\"hash\":\"$(printf admin | sha256sum | sed -E 's/\s+-//')\",\"monitors\":{},\"pages\":{\"main\":[\"Main page\",true,[]]},\"hide\":[],\"notifications\":{\"every\":60,\"exec\":[\"/bin/bash\",\"/status/msmtp.sh\",\"NAME\",\"TYPE\",\"STILL_MET\"],\"sample\":30},\"copy\":\"curl -s https://ltstats.de/v1.1/systemd:agent | tee install.sh | sha256sum -c <(echo f555d4e5cdc64a08b81c2d6fa879f366c19d705f0678b6db9e0f5fd4ee09d825 -) && bash install.sh DOMAIN TOKEN ntp ADDITIONAL_PATHS # NAME\"}" > /status/data.json
 fi
 if [ ! -e /status/status.html ]; then
     ln -s /storage/status.html /status/status.html

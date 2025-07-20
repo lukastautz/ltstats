@@ -1,14 +1,14 @@
 #!/bin/bash
 # LTstats server installer for systems using systemd as init system
 DOMAIN=ltstats.de
-VERSION=1.0
-SERVER_HASH=4f0fa237c973b9fef391412c5c79e4ea184e3da4b0376388debb772c11db8cea
+VERSION=1.1
+SERVER_HASH=eb19930043fe13f5f2185828c150342306a87ad6e2981c6ceb14b999e37ad748
 NTP_HASH=2819b97e9b528562ac41636505718f1372db0e938f5912d305d9edded2dad7b4
 STATUS_HTML_HASH=140710996cf10b9c876d252cd74bfeed6157161cae56f0ecfd83577920b0f912
 MONITOR_HTML_HASH=e97d3a075c2b7759cfa58b60dee94f1a33ea73a06c17e86ab474d9d6e293d437
-ADMIN_HTML_HASH=d2441fe509d92a03e3da40a697c7b43ad8f405f4757cc6a4f4f0b833189b9a9e
+ADMIN_HTML_HASH=c5c10a75b4c7387c3955943defc91fe2cdac8b4241a2fc6ffc92e081b5e32d91
 NOTIFY_HOOK_HASH=055f0f3459669301f1497676855a621182b866c4fedb3f5061dbe3364bcc2bfd
-AGENT_INSTALL_HASH=317b6295841f24465244963b4c97479737564318967e0b9e43a07f16915df675
+AGENT_INSTALL_HASH=f555d4e5cdc64a08b81c2d6fa879f366c19d705f0678b6db9e0f5fd4ee09d825
 
 SERVER_URL=https://$DOMAIN/v$VERSION/ltstats_server
 NTP_URL=https://$DOMAIN/v$VERSION/ltstats_ntp
@@ -49,6 +49,20 @@ if [ "$EUID" -ne 0 ]; then
 fi
 echo "LTstats server installer."
 if [ -e /bin/ltstats_server ]; then
+    V1_0_HASH=4f0fa237c973b9fef391412c5c79e4ea184e3da4b0376388debb772c11db8cea
+    if sha256sum -c <(echo $V1_0_HASH /bin/ltstats_server) > /dev/null 2> /dev/null; then
+        echo "Upgrading from v1.0."
+        read -p "Data path: " LTSTATS_PATH
+        cd $LTSTATS_PATH
+        systemctl stop ltstats_server
+        download $SERVER_URL /bin/ltstats_server $SERVER_HASH
+        chmod +x /bin/ltstats_server
+        download $ADMIN_HTML_URL admin.html $ADMIN_HTML_HASH
+        chown ltstats admin.html 2> /dev/null
+        systemctl start ltstats_server
+        echo "Upgrade done."
+        exit
+    fi
     : # Upgrade, will need to be handled in future versions, for example with just replacement of /bin/ltstats_server in the simplest case or, if the binary format or the json format changes in the future, converting them
 fi
 read -p "Path where the data should be saved: " LTSTATS_PATH
@@ -109,7 +123,7 @@ download $ADMIN_HTML_URL admin.html $ADMIN_HTML_HASH
 download $NOTIFY_HOOK_URL notify.sh $NOTIFY_HOOK_HASH
 chmod +x notify.sh
 echo "For notifications to work, you will have to use a custom script, or setup msmtp and modify the default script."
-echo "{\"time\":$(date +%s),\"hash\":\"$(printf %s "$PASSWORD" | sha256sum | sed -E 's/\s+-//')\",\"monitors\":{},\"pages\":{\"main\":[\"Main page\",true,[]]},\"hide\":[],\"notifications\":{\"every\":60,\"exec\":[\"$LTSTATS_PATH/notify.sh\",\"NAME\",\"TYPE\",\"STILL_MET\"],\"sample\":30},\"copy\":\"curl -s https://ltstats.de/v1.0/systemd:agent | tee install.sh | sha256sum -c <(echo $AGENT_INSTALL_HASH -) && bash install.sh DOMAIN TOKEN ntp ADDITIONAL_PATHS # NAME\"}" > data.json
+echo "{\"time\":$(date +%s),\"hash\":\"$(printf %s "$PASSWORD" | sha256sum | sed -E 's/\s+-//')\",\"monitors\":{},\"pages\":{\"main\":[\"Main page\",true,[]]},\"hide\":[],\"notifications\":{\"every\":60,\"exec\":[\"$LTSTATS_PATH/notify.sh\",\"NAME\",\"TYPE\",\"STILL_MET\"],\"sample\":30},\"copy\":\"curl -s https://ltstats.de/v1.1/systemd:agent | tee install.sh | sha256sum -c <(echo $AGENT_INSTALL_HASH -) && bash install.sh DOMAIN TOKEN ntp ADDITIONAL_PATHS # NAME\"}" > data.json
 chown -R $USER "$LTSTATS_PATH"
 chmod -R 700 "$LTSTATS_PATH"
 echo "[Unit]

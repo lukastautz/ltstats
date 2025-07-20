@@ -42,7 +42,7 @@ LTstats is divided into an agent part that runs on the systems that should be mo
 ## Installation/Quickstart
 You can either compile the individual programs yourself, or you can use the precompiled binaries. If you use systemd (I don't like it, but as it's standard on many distributions and I currently don't have servers with other init systems to test install scripts, there's currently only an installer for systemd. If you use another init system and want to create an installer for it, feel free to open a pull request), you can use the install script which will ask you for any relevant parameters, for example like this:
 ```sh
-curl -s https://ltstats.de/v1.0/systemd:server | tee install.sh | sha256sum -c <(echo 2b8ed34cdf76fcd9434dcf12ea2703eb620242f620d1ee4d41b63fff5100f88f -) && bash install.sh
+curl -s https://ltstats.de/v1.1/systemd:server | tee install.sh | sha256sum -c <(echo f995e3cff9a536057dce4b80e9a7a96d8d23c82ac699bf2037946f8c1bca9296 -) && bash install.sh
 ```
 **Important**: all install scripts (agent and server) **have to be run as root**. Also very important: **choose a secure password**!
 You can also use the docker image, however, this is **NOT recommended**.
@@ -131,7 +131,10 @@ If you wish to use it nevertheless, you can use the image `lukastautz/ltstats:v1
 The default docker password is `admin`, you should sign in and change it as soon as possible.
 
 ## Uninstalling
-You can completely remove LTstats, for the agent (on systemd systems), simply execute `systemctl disable --now ltstats_agent; rm /etc/systemd/system/ltstats_agent.service /etc/monitoring_token /bin/ltstats_agent`, for the NTP client (if installed), simply execute `systemctl disable --now ltstats_ntp; rm /etc/systemd/system/ltstats_ntp.service /bin/ltstats_ntp`, and for the server, simply execute `systemctl disable --now ltstats_server; rm /etc/systemd/system/ltstats_server.service /bin/ltstats_server` (and, if you want to, also delete the data directory).
+You can completely remove LTstats, on systemd systems, simply execute:
+- For the agent: `systemctl disable --now ltstats_agent; rm /etc/systemd/system/ltstats_agent.service /etc/monitoring_token /bin/ltstats_agent`
+- For the NTP client (if installed): `systemctl disable --now ltstats_ntp; rm /etc/systemd/system/ltstats_ntp.service /bin/ltstats_ntp`
+- For the server: `systemctl disable --now ltstats_server; rm /etc/systemd/system/ltstats_server.service /bin/ltstats_server` (and, if you want to, also delete the data directory).
 
 ## Screenshots
 <details>
