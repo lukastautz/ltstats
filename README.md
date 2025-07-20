@@ -127,7 +127,7 @@ The data files (one per monitor, append-only) are stored in the directory that's
 
 ## Docker (not recommended)
 Using Docker is possible (only) for the server, however, this is **NOT recommended** as this will use much more disk space, using custom notification methods requires rebuilding the image, and the initial configuration is limited.
-If you wish to use it nevertheless, you can use the image `lukastautz/ltstats:v1.0` (from Docker hub), and set the environment variables `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` and `SMTP_SENDTO` appropriately, forward port 8080, and mount a volume at `/status`. Then you will need to setup a reverse proxy.
+If you wish to use it nevertheless, you can use the image `lukastautz/ltstats:v1.1` (from Docker hub), and set the environment variables `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` and `SMTP_SENDTO` appropriately, forward port 8080, and mount a volume at `/status`. Then you will need to setup a reverse proxy.
 The default docker password is `admin`, you should sign in and change it as soon as possible.
 
 ## Uninstalling

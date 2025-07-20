@@ -8,12 +8,12 @@ RUN apt update && \
     apt clean && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir /storage /status && \
-    curl https://ltstats.de/v1.0/ltstats_server_docker -o /bin/ltstats_server && \
+    curl https://ltstats.de/v1.1/ltstats_server_docker -o /bin/ltstats_server && \
     chmod +x /bin/ltstats_server && \
-    curl https://ltstats.de/v1.0/admin.html -o /storage/admin.html && \
-    curl https://ltstats.de/v1.0/monitor.html -o /storage/monitor.html && \
-    curl https://ltstats.de/v1.0/status.html -o /storage/status.html && \
-    curl https://ltstats.de/v1.0/msmtp-hook-docker.sh -o /storage/hook.sh && \
+    curl https://ltstats.de/v1.1/admin.html -o /storage/admin.html && \
+    curl https://ltstats.de/v1.1/monitor.html -o /storage/monitor.html && \
+    curl https://ltstats.de/v1.1/status.html -o /storage/status.html && \
+    curl https://ltstats.de/v1.1/msmtp-hook-docker.sh -o /storage/hook.sh && \
     cat > /start.sh << 'EOF'
 #!/bin/bash
 cat > /status/msmtprc << EOC
