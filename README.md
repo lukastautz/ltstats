@@ -42,17 +42,19 @@ LTstats is divided into an agent part that runs on the systems that should be mo
 ## Installation/Quickstart
 You can either compile the individual programs yourself, or you can use the precompiled binaries. If you use systemd (I don't like it, but as it's standard on many distributions and I currently don't have servers with other init systems to test install scripts, there's currently only an installer for systemd. If you use another init system and want to create an installer for it, feel free to open a pull request), you can use the install script which will ask you for any relevant parameters, for example like this:
 ```sh
-curl -s https://ltstats.de/v1.0/systemd:server | tee install.sh | sha256sum -c <(echo 16459ee2c8ccec7474324c2be8f19503ab8fe8f912506eee25117838620ced63 -) && bash install.sh
+curl -s https://ltstats.de/v1.0/systemd:server | tee install.sh | sha256sum -c <(echo 2b8ed34cdf76fcd9434dcf12ea2703eb620242f620d1ee4d41b63fff5100f88f -) && bash install.sh
 ```
 **Important**: all install scripts (agent and server) **have to be run as root**. Also very important: **choose a secure password**!
 You can also use the docker image, however, this is **NOT recommended**.
 After installing, you might want to set up notifications, for that, see below.
+
+**Important**: You need a webserver of some kind for the TLS termination. The webserver should listen on port 443, support TLS 1.0, 1.1 or 1.2 (due to BearSSL not supporting TLS 1.3), and simply proxy the requests to the server (`127.0.0.1:PORT` where `PORT` is the configured port).
+
 Also I suggest that you look through the settings in the admin interface in case you want to change something, and one general notice: **to save the settings/new monitors/etc, you have to click on "Save" in the top right corner**.
 
 ## Upgrading
 To upgrade, first read the release notes to ensure that no special precautions have to be taken, and then just run the latest install script (this works for both agent and server, however the server should always be upgraded first). If necessary, the scripts should handle any conversions (if, for example, file formats changed) themselves. For docker, this is best-effort only.
-
-**Important**: You need a webserver of some kind for the TLS termination. The webserver should listen on port 443, support TLS 1.0, 1.1 or 1.2 (due to BearSSL not supporting TLS 1.3), and simply proxy the requests to the server (`127.0.0.1:PORT` where `PORT` is the configured port).
+If you want to deploy the new agent after the upgrade, you can go to the "Settings" tab on the admin page and re-select the appropriate command to copy.
 
 ## Backups
 I recommend that you take regular backups, the data can usually be compressed to 20-40% of the uncompressed size.

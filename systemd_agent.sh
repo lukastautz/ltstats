@@ -2,7 +2,7 @@
 # LTstats agent installer for systems using systemd as init system
 DOMAIN=ltstats.de
 VERSION=1.0
-AGENT_HASH=bc21ac100cf35564e21f867481d960d673b7899b5dc7e543ac6e8b6051f410c0
+AGENT_HASH=80c7457ca94b8e395540361ba54e3737a680e6c7957e07d3e1d81b75337f647c
 NTP_HASH=2819b97e9b528562ac41636505718f1372db0e938f5912d305d9edded2dad7b4
 
 AGENT_URL=https://$DOMAIN/v$VERSION/ltstats_agent

@@ -40,7 +40,7 @@ else
     echo 1.0 > /status/version
 fi
 if [ ! -f /status/data.json ]; then
-    echo "{\"time\":$(date +%s),\"hash\":\"$(printf admin | sha256sum | sed -E 's/\s+-//')\",\"monitors\":{},\"pages\":{\"main\":[\"Main page\",true,[]]},\"hide\":[],\"notifications\":{\"every\":60,\"exec\":[\"/bin/bash\",\"/status/msmtp.sh\",\"NAME\",\"TYPE\",\"STILL_MET\"],\"sample\":30},\"copy\":\"curl -s https://ltstats.de/v1.0/systemd:agent | tee install.sh | sha256sum -c <(echo 39150d748430884a9796e857b284f9b9102957be54870eeee27bd9febd8af685 -) && bash install.sh DOMAIN TOKEN ntp ADDITIONAL_PATHS # NAME\"}" > /status/data.json
+    echo "{\"time\":$(date +%s),\"hash\":\"$(printf admin | sha256sum | sed -E 's/\s+-//')\",\"monitors\":{},\"pages\":{\"main\":[\"Main page\",true,[]]},\"hide\":[],\"notifications\":{\"every\":60,\"exec\":[\"/bin/bash\",\"/status/msmtp.sh\",\"NAME\",\"TYPE\",\"STILL_MET\"],\"sample\":30},\"copy\":\"curl -s https://ltstats.de/v1.0/systemd:agent | tee install.sh | sha256sum -c <(echo 317b6295841f24465244963b4c97479737564318967e0b9e43a07f16915df675 -) && bash install.sh DOMAIN TOKEN ntp ADDITIONAL_PATHS # NAME\"}" > /status/data.json
 fi
 if [ ! -e /status/status.html ]; then
     ln -s /storage/status.html /status/status.html

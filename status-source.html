@@ -165,7 +165,7 @@ var offlineString = seconds => seconds === null ? 'Offline' : (seconds < 3600 ? 
 var monitorOfflineInnerHTML = monitor => `<td class="offline"><a href="/monitor/${monitor[2]}"><span class="status-dot"></span>${monitor[0]}</td><td style="width:100%" colspan="17" class="offline">${offlineString(monitor[1])}</a></td>`;
 
 function calculateTotals() {
-    if (window.matchMedia('(max-width:44rem)').matches)
+    if (monitors.length === 1 || window.matchMedia('(max-width:44rem)').matches)
         return false;
     var data = [], count = [], data_absolute = [], count_absolute = [];
     monitors.forEach(monitor => {

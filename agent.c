@@ -81,15 +81,18 @@ char *mount_paths_default[] = { "/", NULL };
 #define TWO_UINT8_ZERO(name) name##_before_decimal = name##_after_decimal = 0
 
 #define OPEN_READ(name, what_when_error, min_length) \
-    int read_len; \
+    int read_len = 0; \
     { \
-        int fd = open(name, O_RDONLY); \
-        if (fd == -1 || (read_len = read(fd, file_buf, sizeof(file_buf) - 1)) < min_length) { \
-            if (fd != -1) \
-                close(fd); \
+        int fd = open(name, O_RDONLY), tmp; \
+        if (fd == -1) { \
             what_when_error \
         } \
+        while (read_len < (int)(sizeof(file_buf) - 1) && (tmp = read(fd, file_buf + read_len, sizeof(file_buf) - 1 - read_len)) > 0) \
+            read_len += tmp; \
         close(fd); \
+        if (tmp == -1 || read_len < min_length) { \
+            what_when_error \
+        } \
         file_buf[read_len] = '\0'; \
     }
 
