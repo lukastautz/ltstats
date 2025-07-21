@@ -6,6 +6,13 @@ bool body_read_cont;
 json_object *parse_body_json(void) {
     uint16 body = get_http_body();
     body_read_cont = false;
+    if (!body && sock_ready(client, true, 4)) {
+        int tmp = read(client, http_buf + len, sizeof(http_buf) - len);
+        if (tmp <= 0)
+            return NULL;
+        len += tmp;
+        body = get_http_body();
+    }
     if (!body || body > len || !(body_tokener = json_tokener_new()))
         return NULL;
     http_buf[len] = '\0';
@@ -64,7 +71,7 @@ Admin APIs:
 void admin_process_request(uint8 state) {
     if (state == ADMIN_STATE_LOGIN) { // POST /admin/login
         json_object *body = parse_body_json(), *hash;
-        while (!body && body_read_cont && sock_ready(client, false) && (len = read(client, http_buf, sizeof(http_buf) - 1)) > 0)
+        while (!body && body_read_cont && sock_ready(client, false, 1) && (len = read(client, http_buf, sizeof(http_buf) - 1)) > 0)
             body = parse_additional();
         const char *hash_str;
         if (!body || !json_object_object_get_ex(body, "hash", &hash) || !json_object_is_type(hash, json_type_string) || json_object_get_string_len(hash) != 64 || !(hash_str = json_object_get_string(hash)))
@@ -89,7 +96,7 @@ void admin_process_request(uint8 state) {
     } else if (http_buf_compare("", "POST /admin/data")) {
         json_object *new = parse_body_json(), *hash;
         const char *hash_str;
-        while (!new && body_read_cont && sock_ready(client, false) && (len = read(client, http_buf, sizeof(http_buf) - 1)) > 0)
+        while (!new && body_read_cont && sock_ready(client, false, 10) && (len = read(client, http_buf, sizeof(http_buf) - 1)) > 0)
             new = parse_additional();
         if (!new || !json_object_is_type(new, json_type_object) || !json_object_object_get_ex(new, "hash", &hash) || !json_object_is_type(hash, json_type_string) || json_object_get_string_len(hash) != 64 || !(hash_str = json_object_get_string(hash))) {
             __atomic_store_n(admin_proc, false, __ATOMIC_RELAXED);

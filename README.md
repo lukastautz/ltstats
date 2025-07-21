@@ -42,7 +42,7 @@ LTstats is divided into an agent part that runs on the systems that should be mo
 ## Installation/Quickstart
 You can either compile the individual programs yourself, or you can use the precompiled binaries. If you use systemd (I don't like it, but as it's standard on many distributions and I currently don't have servers with other init systems to test install scripts, there's currently only an installer for systemd. If you use another init system and want to create an installer for it, feel free to open a pull request), you can use the install script which will ask you for any relevant parameters, for example like this:
 ```sh
-curl -s https://ltstats.de/v1.1/systemd:server | tee install.sh | sha256sum -c <(echo f995e3cff9a536057dce4b80e9a7a96d8d23c82ac699bf2037946f8c1bca9296 -) && bash install.sh
+curl -s https://ltstats.de/v1.2/systemd:server | tee install.sh | sha256sum -c <(echo 01ffdc7ad49097d33ec10c872e442cd76323f279edb3d225da3fe26f9bcfc697 -) && bash install.sh
 ```
 **Important**: all install scripts (agent and server) **have to be run as root**. Also very important: **choose a secure password**!
 You can also use the docker image, however, this is **NOT recommended**.
@@ -55,6 +55,7 @@ Also I suggest that you look through the settings in the admin interface in case
 ## Upgrading
 To upgrade, first read the release notes to ensure that no special precautions have to be taken, and then just run the latest install script (this works for both agent and server, however the server should always be upgraded first). If necessary, the scripts should handle any conversions (if, for example, file formats changed) themselves. For docker, this is best-effort only.
 If you want to deploy the new agent after the upgrade, you can go to the "Settings" tab on the admin page and re-select the appropriate command to copy.
+Upgrades can be server-only, so the agent install command (and the version in it) doesn't necessarily change.
 
 ## Backups
 I recommend that you take regular backups, the data can usually be compressed to 20-40% of the uncompressed size.
@@ -127,7 +128,7 @@ The data files (one per monitor, append-only) are stored in the directory that's
 
 ## Docker (not recommended)
 Using Docker is possible (only) for the server, however, this is **NOT recommended** as this will use much more disk space, using custom notification methods requires rebuilding the image, and the initial configuration is limited.
-If you wish to use it nevertheless, you can use the image `lukastautz/ltstats:v1.1` (from Docker hub), and set the environment variables `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` and `SMTP_SENDTO` appropriately, forward port 8080, and mount a volume at `/status`. Then you will need to setup a reverse proxy.
+If you wish to use it nevertheless, you can use the image `lukastautz/ltstats:v1.2` (from Docker hub), and set the environment variables `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` and `SMTP_SENDTO` appropriately, forward port 8080, and mount a volume at `/status`. Then you will need to setup a reverse proxy.
 The default docker password is `admin`, you should sign in and change it as soon as possible.
 
 ## Uninstalling

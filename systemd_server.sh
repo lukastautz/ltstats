@@ -1,8 +1,8 @@
 #!/bin/bash
 # LTstats server installer for systems using systemd as init system
 DOMAIN=ltstats.de
-VERSION=1.1
-SERVER_HASH=eb19930043fe13f5f2185828c150342306a87ad6e2981c6ceb14b999e37ad748
+VERSION=1.2
+SERVER_HASH=423e767ff352f1a939b6065b8eb7f7de0dd88da6035afd7efb61dc847e2a7053
 NTP_HASH=2819b97e9b528562ac41636505718f1372db0e938f5912d305d9edded2dad7b4
 STATUS_HTML_HASH=140710996cf10b9c876d252cd74bfeed6157161cae56f0ecfd83577920b0f912
 MONITOR_HTML_HASH=e97d3a075c2b7759cfa58b60dee94f1a33ea73a06c17e86ab474d9d6e293d437
@@ -47,23 +47,52 @@ if [ "$EUID" -ne 0 ]; then
     echo "This script needs to be run as root"
     exit
 fi
+
+upgrade_from() {
+    case "$1" in
+        v1.0|1.0)
+            echo "Upgrading from v1.0."
+            read -p "Data path: " LTSTATS_PATH
+            cd $LTSTATS_PATH
+            systemctl stop ltstats_server
+            download $SERVER_URL /bin/ltstats_server $SERVER_HASH
+            chmod +x /bin/ltstats_server
+            download $ADMIN_HTML_URL admin.html $ADMIN_HTML_HASH
+            chown ltstats admin.html 2> /dev/null
+            systemctl start ltstats_server
+            echo "Upgrade done."
+            ;;
+        v1.1|1.1)
+            echo "Upgrading from v1.1."
+            systemctl stop ltstats_server
+            download $SERVER_URL /bin/ltstats_server $SERVER_HASH
+            chmod +x /bin/ltstats_server
+            systemctl start ltstats_server
+            echo "Upgrade done."
+            ;;
+        *)
+            echo "Unknown version."
+            ;;
+    esac
+}
+
 echo "LTstats server installer."
 if [ -e /bin/ltstats_server ]; then
     V1_0_HASH=4f0fa237c973b9fef391412c5c79e4ea184e3da4b0376388debb772c11db8cea
+    V1_1_HASH=eb19930043fe13f5f2185828c150342306a87ad6e2981c6ceb14b999e37ad748
+    V1_2_BETA_HASH=94dcfcc86131380a2320d43d4df51684c4a9e54f07428c15d34c764c31db5847
     if sha256sum -c <(echo $V1_0_HASH /bin/ltstats_server) > /dev/null 2> /dev/null; then
-        echo "Upgrading from v1.0."
-        read -p "Data path: " LTSTATS_PATH
-        cd $LTSTATS_PATH
-        systemctl stop ltstats_server
-        download $SERVER_URL /bin/ltstats_server $SERVER_HASH
-        chmod +x /bin/ltstats_server
-        download $ADMIN_HTML_URL admin.html $ADMIN_HTML_HASH
-        chown ltstats admin.html 2> /dev/null
-        systemctl start ltstats_server
-        echo "Upgrade done."
-        exit
+        upgrade_from v1.0
+    elif sha256sum -c <(echo $V1_1_HASH /bin/ltstats_server) > /dev/null 2> /dev/null || sha256sum -c <(echo $V1_2_BETA_HASH /bin/ltstats_server) > /dev/null 2> /dev/null; then
+        upgrade_from v1.1
+    elif sha256sum -c <(echo $SERVER_HASH /bin/ltstats_server) > /dev/null 2> /dev/null; then
+        echo "Already up-to-date."
+    else
+        echo "Autodetection of current version failed."
+        read -p "Version you want to upgrade from: " VERSION
+        upgrade_from $VERSION
     fi
-    : # Upgrade, will need to be handled in future versions, for example with just replacement of /bin/ltstats_server in the simplest case or, if the binary format or the json format changes in the future, converting them
+    exit
 fi
 read -p "Path where the data should be saved: " LTSTATS_PATH
 if [ -e "$LTSTATS_PATH" ] || [ -d "$LTSTATS_PATH" ]; then

@@ -29,9 +29,9 @@ void sigalrm_handler(void) {
     _exit(2);
 }
 
-bool sock_ready(int fd, bool read) {
+bool sock_ready(int fd, bool read, int timeout_ms) {
     struct pollfd pfd = { .fd = fd, .events = read ? POLLIN : POLLOUT, .revents = 0 };
-    if (poll(&pfd, 1, 1) > 0)
+    if (poll(&pfd, 1, timeout_ms) > 0)
         return (pfd.revents & (read ? POLLIN : POLLOUT)) && !(pfd.revents & (POLLERR | POLLHUP | POLLNVAL));
     return false;
 }
@@ -339,13 +339,13 @@ void check_close_fds(void) {
 bool client_write_len(const char *s, uint32 l) {
     uint32 pos = 0;
     int32 tmp;
-    while (sock_ready(client, false) && (tmp = write(client, s + pos, l - pos)) > 0 && (pos += tmp) < l);
+    while (sock_ready(client, false, 5) && (tmp = write(client, s + pos, l - pos)) > 0 && (pos += tmp) < l);
     return pos == l;
 }
 
 bool client_sendfile(int fd, uint32 len) {
     off_t pos = 0;
-    while (sock_ready(client, false) && sendfile(client, fd, (off_t *)&pos, len - pos) > 0 && pos < len);
+    while (sock_ready(client, false, 5) && sendfile(client, fd, (off_t *)&pos, len - pos) > 0 && pos < len);
     return pos == len;
 }
 
@@ -696,7 +696,7 @@ int main(int argc, char **argv) {
         }
         if ((client = syscall(__NR_accept4, sock, &client_addr, &addrlen, SOCK_NONBLOCK)) < 0)
             continue;
-        if (!sock_ready(client, true) || (len = read(client, http_buf, sizeof(http_buf) - 1)) < (int32)strlen("GET / HTTP/1.1\r\nHost:\r\n\r\n"))
+        if (!sock_ready(client, true, 1) || (len = read(client, http_buf, sizeof(http_buf) - 1)) < (int32)strlen("GET / HTTP/1.1\r\nHost:\r\n\r\n"))
             goto cont;
         bool admin = false;
         if (http_buf[1] == 'E') { // GET
@@ -707,13 +707,23 @@ int main(int argc, char **argv) {
         if (http_buf[1] != 'O') // POST
             goto cont;
         if (http_buf_compare("POST /", "submit")) { // POST /submit: new data
-            if ((uint32)len < strlen("POST /submit HTTP/1.1\r\nHost:\r\n\r\n") + sizeof(net_header_t) + sizeof(details_t) + sizeof(stats_t))
-                goto cont;
             body = get_http_body();
-            if (!body)
-                goto cont;
-            if (len == body && sock_ready(client, true)) {
+            if (!body) { // caddy seems to send the request in pieces, not optimal as this will block the main process longer, but I don't see a better way with the current architecture
+                if (sock_ready(client, true, 1)) {
+                    int tmp = read(client, http_buf + len, sizeof(http_buf) - len);
+                    if (tmp <= 0)
+                        goto cont;
+                    len += tmp;
+                    body = get_http_body();
+                    if (!body || len == body)
+                        goto cont;
+                } else
+                    goto cont;
+            }
+            if (len == body && sock_ready(client, true, 1)) {
                 len = read(client, http_buf, sizeof(http_buf));
+                if (len == -1)
+                    goto cont;
                 body = 0;
             }
             if ((uint32)len < body + sizeof(net_header_t) + sizeof(details_t))
@@ -779,7 +789,7 @@ int main(int argc, char **argv) {
                         monitor->time_diff = ptr_stats[ptr_header->stats_count - 1].time - last_time;
                 }
 success:
-                if (sock_ready(client, false))
+                if (sock_ready(client, false, 1))
                     write(client, SLEN("HTTP/1.1 200\r\nContent-Length: 1\r\nConnection: close\r\n\r\n1"));
             }
             goto cont;
