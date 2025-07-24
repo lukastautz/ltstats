@@ -150,6 +150,9 @@ void get_network_stats(uint64 *rx, uint64 *tx) {
                 ++field;
             if (!*field)
                 continue;
+            *field = '\0';
+            if (strchr(line_start, '.')) // VLAN device
+                continue;
             ++field;
             while (isspace(*field))
                 ++field;
