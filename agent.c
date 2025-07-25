@@ -33,6 +33,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <sys/stat.h>
 #include <poll.h>
 #include <sys/sysinfo.h>
+#include <netinet/tcp.h>
 #include "BearSSL/inc/bearssl.h"
 #include "config.h"
 #include "TA.h"
@@ -228,7 +229,7 @@ void get_disk_stats(uint64 *sectors_read, uint64 *sectors_written) {
     }
 }
 
-uint32 get_uptime(void) {
+uint32 get_uptime(void) { // sysinfo would be more efficient, but it doesn't relay the available memory information (si_mem_available()), so the agent reads from procfs files (and only using sysinfo for the uptime seems not efficient either)
     OPEN_READ("/proc/uptime", return 0;, 3)
     return (uint32)strtoul(file_buf, NULL, 10);
 }
@@ -265,7 +266,7 @@ void copy_linux_version(void) {
 
 #define PROC_MEMINFO_KB 1024
 
-void get_memory_info(void) {
+void get_memory_info(void) { // sysinfo would be more efficient, but it doesn't relay the available memory information (si_mem_available()), so the agent reads from procfs files (and only using sysinfo for the uptime seems not efficient either)
     OPEN_READ("/proc/meminfo", goto fail;, 64)
     char *ptr = file_buf + strlen("MemTotal:");
     while (isspace(*++ptr) && IN_READ(ptr));
@@ -362,8 +363,22 @@ int setup_bearssl_connection(int *fd) {
         *fd = socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
         if (*fd < 0)
             continue;
-        if (!connect(*fd, cur->ai_addr, cur->ai_addrlen))
+        int opt = 3;
+        if (setsockopt(*fd, IPPROTO_TCP, TCP_SYNCNT, &opt, sizeof(opt))) {
+            close(*fd);
+            continue;
+        }
+        if (!connect(*fd, cur->ai_addr, cur->ai_addrlen)) {
+            unsigned int timeout = 4000;
+            struct timeval timeout_struct = { .tv_sec = 4, .tv_usec = 0 };
+            if (setsockopt(*fd, IPPROTO_TCP, TCP_USER_TIMEOUT, &timeout, sizeof(timeout)) ||
+                setsockopt(*fd, SOL_SOCKET, SO_RCVTIMEO, &timeout_struct, sizeof(timeout_struct)) ||
+                setsockopt(*fd, SOL_SOCKET, SO_SNDTIMEO, &timeout_struct, sizeof(timeout_struct))) {
+                close(*fd);
+                continue;
+            }
             break;
+        }
         close(*fd);
     }
     freeaddrinfo(addrinfo);

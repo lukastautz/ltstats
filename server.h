@@ -39,6 +39,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/sendfile.h>
+#include <netinet/tcp.h>
 #include "str.c"
 #include "json-c/json.h"
 

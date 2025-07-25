@@ -696,7 +696,12 @@ int main(int argc, char **argv) {
         }
         if ((client = syscall(__NR_accept4, sock, &client_addr, &addrlen, SOCK_NONBLOCK)) < 0)
             continue;
-        if (!sock_ready(client, true, 1) || (len = read(client, http_buf, sizeof(http_buf) - 1)) < (int32)strlen("GET / HTTP/1.1\r\nHost:\r\n\r\n"))
+        unsigned int timeout = 25; // 25 ms, should be more than enough as the reverse proxy should be on the same machine
+        struct timeval timeout_struct = { .tv_sec = 0, .tv_usec = 25000 };
+        if (setsockopt(client, IPPROTO_TCP, TCP_USER_TIMEOUT, &timeout, sizeof(timeout)) ||
+            setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &timeout_struct, sizeof(timeout_struct)) ||
+            setsockopt(client, SOL_SOCKET, SO_SNDTIMEO, &timeout_struct, sizeof(timeout_struct)) ||
+            !sock_ready(client, true, 1) || (len = read(client, http_buf, sizeof(http_buf) - 1)) < (int32)strlen("GET / HTTP/1.1\r\nHost:\r\n\r\n"))
             goto cont;
         bool admin = false;
         if (http_buf[1] == 'E') { // GET
