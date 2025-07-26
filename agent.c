@@ -332,7 +332,7 @@ void get_disk_info(void) {
 
 bool sock_ready(int fd, bool read) {
     struct pollfd pfd = { .fd = fd, .events = read ? POLLIN : POLLOUT, .revents = 0 };
-    if (poll(&pfd, 1, 1000) > 0)
+    if (poll(&pfd, 1, 2500) > 0)
         return (pfd.revents & (read ? POLLIN : POLLOUT)) && !(pfd.revents & (POLLERR | POLLHUP | POLLNVAL));
     return false;
 }
@@ -369,8 +369,8 @@ int setup_bearssl_connection(int *fd) {
             continue;
         }
         if (!connect(*fd, cur->ai_addr, cur->ai_addrlen)) {
-            unsigned int timeout = 4000;
-            struct timeval timeout_struct = { .tv_sec = 4, .tv_usec = 0 };
+            unsigned int timeout = 5000;
+            struct timeval timeout_struct = { .tv_sec = 5, .tv_usec = 0 };
             if (setsockopt(*fd, IPPROTO_TCP, TCP_USER_TIMEOUT, &timeout, sizeof(timeout)) ||
                 setsockopt(*fd, SOL_SOCKET, SO_RCVTIMEO, &timeout_struct, sizeof(timeout_struct)) ||
                 setsockopt(*fd, SOL_SOCKET, SO_SNDTIMEO, &timeout_struct, sizeof(timeout_struct))) {

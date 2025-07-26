@@ -696,8 +696,8 @@ int main(int argc, char **argv) {
         }
         if ((client = syscall(__NR_accept4, sock, &client_addr, &addrlen, SOCK_NONBLOCK)) < 0)
             continue;
-        unsigned int timeout = 25; // 25 ms, should be more than enough as the reverse proxy should be on the same machine
-        struct timeval timeout_struct = { .tv_sec = 0, .tv_usec = 25000 };
+        unsigned int timeout = 50; // 50 ms, should be more than enough as the reverse proxy should be on the same machine
+        struct timeval timeout_struct = { .tv_sec = 0, .tv_usec = 50000 };
         if (setsockopt(client, IPPROTO_TCP, TCP_USER_TIMEOUT, &timeout, sizeof(timeout)) ||
             setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &timeout_struct, sizeof(timeout_struct)) ||
             setsockopt(client, SOL_SOCKET, SO_SNDTIMEO, &timeout_struct, sizeof(timeout_struct)) ||
