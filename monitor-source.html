@@ -23,7 +23,7 @@ var state = {
     dark: window.matchMedia('(prefers-color-scheme:dark)').matches
 };
 
-var sizes =  'KMGTPE';
+var sizes = 'KMGTPE';
 
 if (!state.dark) {
     state.colors.ram = '#008a00';
@@ -56,123 +56,6 @@ function merge(a, b) {
     else
         merge(a[key], b[key]);
   }
-}
-
-function initializeCharts() {
-    var chartOptions = {
-        chart: {
-            type: 'line',
-            height: 350,
-            toolbar: {
-                show: true,
-                tools: {
-                    download: false,
-                    selection: false,
-                    zoom: true,
-                    zoomin: false,
-                    zoomout: false,
-                    pan: true,
-                    reset: true
-                }
-            },
-            animations: {
-                enabled: true
-            }
-        },
-        dataLabels: {
-            enabled: false
-        },
-        stroke: {
-            curve: 'straight',
-            width: 2
-        },
-        grid: {
-            borderColor: state.dark ? '#555' : '#e0e0e0'
-        },
-        xaxis: {
-            type: 'datetime',
-            labels: {
-                datetimeUTC: false
-            }
-        },
-        tooltip: {
-            x: {
-                format: 'dd MMM HH:mm'
-            }
-        },
-        theme: {
-            mode: state.dark ? 'dark' : 'light'
-        },
-        legend: {
-            position: 'top',
-            horizontalAlign: 'right',
-            onItemClick: {
-                toggleDataSeries: true
-            }
-        },
-        series: [],
-        title: {
-            align: 'left'
-        },
-        yaxis: {
-            min: 0
-        },
-        markers: {
-            size: 0
-        }
-    };
-    [
-        [{
-            title: {
-                text: 'Usage (%)',
-            },
-            yaxis: {
-                title: {
-                    text: 'Usage (%)'
-                }
-            }
-        }, 'resources', 'percentChart'],
-        [{
-            title: {
-                text: 'Network Usage',
-            },
-            yaxis: {
-                title: {
-                    text: 'Speed'
-                },
-                labels: {
-                    formatter: formatNetworkSpeed
-                }
-            },
-            tooltip: {
-                y: {
-                    formatter: formatNetworkSpeed
-                }
-            }
-        }, 'network', 'networkChart'],
-        [{
-            title: {
-            text: 'Disk IO',
-            },
-            yaxis: {
-                title: {
-                    text: 'Speed'
-                },
-                labels: {
-                    formatter: val => formatBytes(val) + '/s'
-                },
-            },
-            tooltip: {
-                y: {
-                    formatter: val => formatBytes(val) + '/s'
-                }
-            }
-        }, 'disk', 'diskChart']
-    ].forEach(chart => {
-        merge(chart[0], chartOptions);
-        state.charts[chart[1]] = new ApexCharts($(chart[2]), chart[0]);
-        state.charts[chart[1]].render();
-    });
 }
 
 function updateCharts() {
@@ -315,13 +198,19 @@ function fetchData() {
         $('newer').disabled = state.back === 0;
     })
     .catch(() => document.body.querySelector('.error').style.display = 'block');
+    var hash = new URLSearchParams();
+    if (state.period !== '6h')
+        hash.set('period', state.period);
+    if (state.back !== 0)
+        hash.set('back', state.back);
+    var str = hash.toString();
+    history.replaceState(null, '', str.length === 0 ? window.location.pathname : `#${str}`);
 }
 
-function initialize() {
+document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('wheel', function(event) {
         event.stopImmediatePropagation();
     }, true);
-    initializeCharts();
     var buttons = document.querySelectorAll('[data-period]');
     buttons.forEach(button => {
         button.addEventListener('click', () => {
@@ -331,6 +220,141 @@ function initialize() {
             state.back = 0;
             fetchData();
         });
+    });
+    if (window.location.hash && window.location.hash.length > 1)
+        new URLSearchParams(window.location.hash.substr(1)).forEach((value, key) => {
+            switch (key) {
+                case 'period':
+                    if (!['6h', '12h', '24h', '3d', '7d', '14d', '28d', '3m', '6m', '1y', '2y'].includes(value))
+                        return;
+                    state.period = value;
+                    buttons.forEach(button => {
+                        if (button.getAttribute('data-period') === value)
+                            button.classList.add('active');
+                        else
+                            button.classList.remove('active');
+                    });
+                    break;
+                case 'back':
+                    var back = parseInt(value);
+                    if (back !== NaN)
+                        state.back = back;
+                    break;
+            }
+        });
+    var chartOptions = {
+        chart: {
+            type: 'line',
+            height: 350,
+            toolbar: {
+                show: true,
+                tools: {
+                    download: false,
+                    selection: false,
+                    zoom: true,
+                    zoomin: false,
+                    zoomout: false,
+                    pan: true,
+                    reset: true
+                }
+            },
+            animations: {
+                enabled: true
+            }
+        },
+        dataLabels: {
+            enabled: false
+        },
+        stroke: {
+            curve: 'straight',
+            width: 2
+        },
+        grid: {
+            borderColor: state.dark ? '#555' : '#e0e0e0'
+        },
+        xaxis: {
+            type: 'datetime',
+            labels: {
+                datetimeUTC: false
+            }
+        },
+        tooltip: {
+            x: {
+                format: 'dd MMM HH:mm'
+            }
+        },
+        theme: {
+            mode: state.dark ? 'dark' : 'light'
+        },
+        legend: {
+            position: 'top',
+            horizontalAlign: 'right',
+            onItemClick: {
+                toggleDataSeries: true
+            }
+        },
+        series: [],
+        title: {
+            align: 'left'
+        },
+        yaxis: {
+            min: 0
+        },
+        markers: {
+            size: 0
+        }
+    };
+    [
+        [{
+            title: {
+                text: 'Usage (%)',
+            },
+            yaxis: {
+                title: {
+                    text: 'Usage (%)'
+                }
+            }
+        }, 'resources', 'percentChart'],
+        [{
+            title: {
+                text: 'Network Usage',
+            },
+            yaxis: {
+                title: {
+                    text: 'Speed'
+                },
+                labels: {
+                    formatter: formatNetworkSpeed
+                }
+            },
+            tooltip: {
+                y: {
+                    formatter: formatNetworkSpeed
+                }
+            }
+        }, 'network', 'networkChart'],
+        [{
+            title: {
+            text: 'Disk IO',
+            },
+            yaxis: {
+                title: {
+                    text: 'Speed'
+                },
+                labels: {
+                    formatter: val => formatBytes(val) + '/s'
+                },
+            },
+            tooltip: {
+                y: {
+                    formatter: val => formatBytes(val) + '/s'
+                }
+            }
+        }, 'disk', 'diskChart']
+    ].forEach(chart => {
+        merge(chart[0], chartOptions);
+        state.charts[chart[1]] = new ApexCharts($(chart[2]), chart[0]);
+        state.charts[chart[1]].render();
     });
     $('older').addEventListener('click', () => {
         ++state.back;
@@ -343,13 +367,11 @@ function initialize() {
         }
     });
     fetchData();
-    setInterval(() => {
-        if (state.back === 0 && (typeof document.visibilityState !== 'string' || document.visibilityState !== 'hidden'))
-            fetchData();
-    }, 30000);
-}
-
-document.addEventListener('DOMContentLoaded', initialize);
+});
+setInterval(() => {
+    if (state.back === 0 && (typeof document.visibilityState !== 'string' || document.visibilityState !== 'hidden'))
+        fetchData();
+}, 30000);
 document.addEventListener('visibilitychange', () => {
     if (typeof document.visibilityState === 'string' && document.visibilityState !== 'hidden') {
         fetchData();
