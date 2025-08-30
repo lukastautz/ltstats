@@ -42,7 +42,7 @@ LTstats is divided into an agent part that runs on the systems that should be mo
 ## Installation/Quickstart
 You can either compile the individual programs yourself, or you can use the precompiled binaries. If you use systemd (I don't like it, but as it's standard on many distributions and I currently don't have servers with other init systems to test install scripts, there's currently only an installer for systemd. If you use another init system and want to create an installer for it, feel free to open a pull request), you can use the install script which will ask you for any relevant parameters, for example like this:
 ```sh
-curl -s https://ltstats.de/v1.2/systemd:server | tee install.sh | sha256sum -c <(echo 01ffdc7ad49097d33ec10c872e442cd76323f279edb3d225da3fe26f9bcfc697 -) && bash install.sh
+curl -s https://ltstats.de/v1.3/systemd:server | tee install.sh | sha256sum -c <(echo 28d299fa4e0af214efb8bac1196e32261a78ebe5e2070b213146371240bdddd0 -) && bash install.sh
 ```
 **Important**: all install scripts (agent and server) **have to be run as root**. Also very important: **choose a secure password**!
 You can also use the docker image, however, this is **NOT recommended**.
@@ -128,7 +128,7 @@ The data files (one per monitor, append-only) are stored in the directory that's
 
 ## Docker (not recommended)
 Using Docker is possible (only) for the server, however, this is **NOT recommended** as this will use much more disk space, using custom notification methods requires rebuilding the image, and the initial configuration is limited.
-If you wish to use it nevertheless, you can use the image `lukastautz/ltstats:v1.2` (from Docker hub), and set the environment variables `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` and `SMTP_SENDTO` appropriately, forward port 8080, and mount a volume at `/status`. Then you will need to setup a reverse proxy.
+If you wish to use it nevertheless, you can use the image `lukastautz/ltstats:v1.3` (from Docker hub), and set the environment variables `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` and `SMTP_SENDTO` appropriately, forward port 8080, and mount a volume at `/status`. Then you will need to setup a reverse proxy.
 The default docker password is `admin`, you should sign in and change it as soon as possible.
 
 ## Uninstalling

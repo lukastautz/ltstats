@@ -1,9 +1,9 @@
 #!/bin/bash
 # LTstats agent installer for systems using systemd as init system
 DOMAIN=ltstats.de
-VERSION=1.1
-AGENT_HASH=0bad48dd1aca7c47f0355375d57fa9f6d9eea8357cd084b9281e287c00449019
-NTP_HASH=2819b97e9b528562ac41636505718f1372db0e938f5912d305d9edded2dad7b4
+VERSION=1.3
+AGENT_HASH=68e17e08ba209a88b5c8615ec45e9a9780192dd51d0b3c85c7654b0b2dff535e
+NTP_HASH=c00bcfc5b3e572842d90d82913a3e88813adbc1cb93689eb1f6b30e511638a48
 
 AGENT_URL=https://$DOMAIN/v$VERSION/ltstats_agent
 NTP_URL=https://$DOMAIN/v$VERSION/ltstats_ntp

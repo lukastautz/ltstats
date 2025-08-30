@@ -1,14 +1,14 @@
 #!/bin/bash
 # LTstats server installer for systems using systemd as init system
 DOMAIN=ltstats.de
-VERSION=1.2
-SERVER_HASH=423e767ff352f1a939b6065b8eb7f7de0dd88da6035afd7efb61dc847e2a7053
-NTP_HASH=2819b97e9b528562ac41636505718f1372db0e938f5912d305d9edded2dad7b4
-STATUS_HTML_HASH=140710996cf10b9c876d252cd74bfeed6157161cae56f0ecfd83577920b0f912
-MONITOR_HTML_HASH=e97d3a075c2b7759cfa58b60dee94f1a33ea73a06c17e86ab474d9d6e293d437
-ADMIN_HTML_HASH=c5c10a75b4c7387c3955943defc91fe2cdac8b4241a2fc6ffc92e081b5e32d91
+VERSION=1.3
+SERVER_HASH=7c6074789a41fb2e3eafa1eef5f754e520104c570e183fc5642d77895d3fd399
+NTP_HASH=c00bcfc5b3e572842d90d82913a3e88813adbc1cb93689eb1f6b30e511638a48
+STATUS_HTML_HASH=543f6df5ff55e8fa90aa6515e623f9bf4c53e645f6838465dbc62fea0786f068
+MONITOR_HTML_HASH=0fe60673da899fcdcfc1fd3b71ccf55b0c4ad9ed183774cd0f905db7b78663cf
+ADMIN_HTML_HASH=48044b8f2a46773b94fc6974f6936929b4313543a6732248aa69d2d6f896cd72
 NOTIFY_HOOK_HASH=055f0f3459669301f1497676855a621182b866c4fedb3f5061dbe3364bcc2bfd
-AGENT_INSTALL_HASH=f555d4e5cdc64a08b81c2d6fa879f366c19d705f0678b6db9e0f5fd4ee09d825
+AGENT_INSTALL_HASH=123bdcc123d39dfe915eb3ed9223ea75c845a8bef5c79b994f4b2de20530085c
 
 SERVER_URL=https://$DOMAIN/v$VERSION/ltstats_server
 NTP_URL=https://$DOMAIN/v$VERSION/ltstats_ntp
@@ -50,25 +50,27 @@ fi
 
 upgrade_from() {
     case "$1" in
-        v1.0|1.0)
-            echo "Upgrading from v1.0."
+        v1.0|1.0|v1.1|1.1|v1.2|1.2)
+            echo "Upgrading from v1.0/v1.1/v1.2."
             read -p "Data path: " LTSTATS_PATH
             cd $LTSTATS_PATH
             systemctl stop ltstats_server
             download $SERVER_URL /bin/ltstats_server $SERVER_HASH
             chmod +x /bin/ltstats_server
-            download $ADMIN_HTML_URL admin.html $ADMIN_HTML_HASH
-            chown ltstats admin.html 2> /dev/null
+            if [ -e /bin/ltstats_ntp ]; then
+                download $NTP_URL /bin/ltstats_ntp $NTP_HASH
+                chmod +x /bin/ltstats_ntp
+                systemctl restart ltstats_ntp
+            fi
+            if [ "$LEAVE_HTML" == "" ]; then
+                download $ADMIN_HTML_URL admin.html $ADMIN_HTML_HASH
+                download $STATUS_HTML_URL status.html $STATUS_HTML_HASH
+                download $MONITOR_HTML_URL monitor.html $MONITOR_HTML_HASH
+                chown ltstats {admin,monitor,status}.html 2> /dev/null
+            fi
             systemctl start ltstats_server
             echo "Upgrade done."
-            ;;
-        v1.1|1.1)
-            echo "Upgrading from v1.1."
-            systemctl stop ltstats_server
-            download $SERVER_URL /bin/ltstats_server $SERVER_HASH
-            chmod +x /bin/ltstats_server
-            systemctl start ltstats_server
-            echo "Upgrade done."
+            cd - 2> /dev/null > /dev/null
             ;;
         *)
             echo "Unknown version."
@@ -81,10 +83,13 @@ if [ -e /bin/ltstats_server ]; then
     V1_0_HASH=4f0fa237c973b9fef391412c5c79e4ea184e3da4b0376388debb772c11db8cea
     V1_1_HASH=eb19930043fe13f5f2185828c150342306a87ad6e2981c6ceb14b999e37ad748
     V1_2_BETA_HASH=94dcfcc86131380a2320d43d4df51684c4a9e54f07428c15d34c764c31db5847
+    V1_2_HASH=423e767ff352f1a939b6065b8eb7f7de0dd88da6035afd7efb61dc847e2a7053
     if sha256sum -c <(echo $V1_0_HASH /bin/ltstats_server) > /dev/null 2> /dev/null; then
         upgrade_from v1.0
     elif sha256sum -c <(echo $V1_1_HASH /bin/ltstats_server) > /dev/null 2> /dev/null || sha256sum -c <(echo $V1_2_BETA_HASH /bin/ltstats_server) > /dev/null 2> /dev/null; then
         upgrade_from v1.1
+    elif sha256sum -c <(echo $V1_2_HASH /bin/ltstats_server) > /dev/null 2> /dev/null; then
+        upgrade_from v1.2
     elif sha256sum -c <(echo $SERVER_HASH /bin/ltstats_server) > /dev/null 2> /dev/null; then
         echo "Already up-to-date."
     else
@@ -92,6 +97,7 @@ if [ -e /bin/ltstats_server ]; then
         read -p "Version you want to upgrade from: " VERSION
         upgrade_from $VERSION
     fi
+    rm -- "$0"
     exit
 fi
 read -p "Path where the data should be saved: " LTSTATS_PATH
@@ -133,7 +139,6 @@ read -p "Enter the admin password: " PASSWORD
 stty echo
 echo
 read -p "Enter the port the server will listen on (you will need to setup a reverse proxy to this): " PORT
-
 download $SERVER_URL /bin/ltstats_server $SERVER_HASH
 chmod 555 /bin/ltstats_server
 USER=ltstats
@@ -152,7 +157,7 @@ download $ADMIN_HTML_URL admin.html $ADMIN_HTML_HASH
 download $NOTIFY_HOOK_URL notify.sh $NOTIFY_HOOK_HASH
 chmod +x notify.sh
 echo "For notifications to work, you will have to use a custom script, or setup msmtp and modify the default script."
-echo "{\"time\":$(date +%s),\"hash\":\"$(printf %s "$PASSWORD" | sha256sum | sed -E 's/\s+-//')\",\"monitors\":{},\"pages\":{\"main\":[\"Main page\",true,[]]},\"hide\":[],\"notifications\":{\"every\":60,\"exec\":[\"$LTSTATS_PATH/notify.sh\",\"NAME\",\"TYPE\",\"STILL_MET\"],\"sample\":30},\"copy\":\"curl -s https://ltstats.de/v1.1/systemd:agent | tee install.sh | sha256sum -c <(echo $AGENT_INSTALL_HASH -) && bash install.sh DOMAIN TOKEN ntp ADDITIONAL_PATHS # NAME\"}" > data.json
+echo "{\"time\":$(date +%s),\"hash\":\"$(printf %s "$PASSWORD" | sha256sum | sed -E 's/\s+-//')\",\"monitors\":{},\"pages\":{\"main\":[\"Main page\",true,[]]},\"hide\":[],\"notifications\":{\"every\":60,\"exec\":[\"$LTSTATS_PATH/notify.sh\",\"NAME\",\"TYPE\",\"STILL_MET\"],\"sample\":30},\"copy\":\"curl -s https://ltstats.de/v1.3/systemd:agent | tee install.sh | sha256sum -c <(echo $AGENT_INSTALL_HASH -) && bash install.sh DOMAIN TOKEN ntp ADDITIONAL_PATHS # NAME\"}" > data.json
 chown -R $USER "$LTSTATS_PATH"
 chmod -R 700 "$LTSTATS_PATH"
 echo "[Unit]

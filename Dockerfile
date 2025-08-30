@@ -1,6 +1,6 @@
 # LTstats server docker image. NOT recommended!
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 RUN apt update && \
     apt upgrade -y && \
@@ -8,12 +8,12 @@ RUN apt update && \
     apt clean && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir /storage /status && \
-    curl https://ltstats.de/v1.2/ltstats_server_docker -o /bin/ltstats_server && \
+    curl https://ltstats.de/v1.3/ltstats_server_docker -o /bin/ltstats_server && \
     chmod +x /bin/ltstats_server && \
-    curl https://ltstats.de/v1.2/admin.html -o /storage/admin.html && \
-    curl https://ltstats.de/v1.2/monitor.html -o /storage/monitor.html && \
-    curl https://ltstats.de/v1.2/status.html -o /storage/status.html && \
-    curl https://ltstats.de/v1.2/msmtp-hook-docker.sh -o /storage/hook.sh && \
+    curl https://ltstats.de/v1.3/admin.html -o /storage/admin.html && \
+    curl https://ltstats.de/v1.3/monitor.html -o /storage/monitor.html && \
+    curl https://ltstats.de/v1.3/status.html -o /storage/status.html && \
+    curl https://ltstats.de/v1.3/msmtp-hook-docker.sh -o /storage/hook.sh && \
     cat > /start.sh << 'EOF'
 #!/bin/bash
 cat > /status/msmtprc << EOC
@@ -33,15 +33,15 @@ password "$SMTP_PASSWORD"
 EOC
 chmod 600 /status/msmtprc
 if [ -f /status/version ]; then
-    if [ "$(cat /status/version)" != "1.2" ]; then
-        echo 1.2 > /status/version
+    if [ "$(cat /status/version)" != "1.3" ]; then
+        echo 1.3 > /status/version
         : # handle conversions
     fi
 else
-    echo 1.2 > /status/version
+    echo 1.3 > /status/version
 fi
 if [ ! -f /status/data.json ]; then
-    echo "{\"time\":$(date +%s),\"hash\":\"$(printf admin | sha256sum | sed -E 's/\s+-//')\",\"monitors\":{},\"pages\":{\"main\":[\"Main page\",true,[]]},\"hide\":[],\"notifications\":{\"every\":60,\"exec\":[\"/bin/bash\",\"/status/msmtp.sh\",\"NAME\",\"TYPE\",\"STILL_MET\"],\"sample\":30},\"copy\":\"curl -s https://ltstats.de/v1.1/systemd:agent | tee install.sh | sha256sum -c <(echo f555d4e5cdc64a08b81c2d6fa879f366c19d705f0678b6db9e0f5fd4ee09d825 -) && bash install.sh DOMAIN TOKEN ntp ADDITIONAL_PATHS # NAME\"}" > /status/data.json
+    echo "{\"time\":$(date +%s),\"hash\":\"$(printf admin | sha256sum | sed -E 's/\s+-//')\",\"monitors\":{},\"pages\":{\"main\":[\"Main page\",true,[]]},\"hide\":[],\"notifications\":{\"every\":60,\"exec\":[\"/bin/bash\",\"/status/msmtp.sh\",\"NAME\",\"TYPE\",\"STILL_MET\"],\"sample\":30},\"copy\":\"curl -s https://ltstats.de/v1.3/systemd:agent | tee install.sh | sha256sum -c <(echo 123bdcc123d39dfe915eb3ed9223ea75c845a8bef5c79b994f4b2de20530085c -) && bash install.sh DOMAIN TOKEN ntp ADDITIONAL_PATHS # NAME\"}" > /status/data.json
 fi
 if [ ! -e /status/status.html ]; then
     ln -s /storage/status.html /status/status.html
