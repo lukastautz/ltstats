@@ -225,7 +225,7 @@ json_object *get_monitor_details_json(monitor_details_t *monitor, json_object *m
             HANDLE_HIDE(IO) json_object_array_add(monitor_data, json_object_new_uint64(0));
         }
     } else if (monitor->was_online && down_seconds != (uint32)-1)
-        json_object_array_add(monitor_data, json_object_new_uint64(down_seconds));
+        json_object_array_add(monitor_data, json_object_new_uint64(down_seconds - 60));
     else
         json_object_array_add(monitor_data, NULL);
     return monitor_data;

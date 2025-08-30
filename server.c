@@ -538,7 +538,7 @@ start:
                 if (!element || !json_object_is_type(element, json_type_int))
                     continue;
                 uint64 minutes = json_object_get_uint64(element);
-                if (last_data_seconds >= (minutes * 60) && !details->notification_sent[0]) {
+                if ((last_data_seconds - 60) >= (minutes * 60) && !details->notification_sent[0]) {
                     details->notification_sent[0] = true;
                     notify(exec, details->name, details->public_token, "DOWN", true);
                 }
@@ -564,6 +564,8 @@ start:
                 for (uint16 i = 0; i < count; ++i) {
                     stats_t *element = (stats_t *)http_buf + i;
                     uint32 time_diff = last_time ? element->time - last_time : CONFIG_MEASURE_EVERY_N_SECONDS;
+                    if (!time_diff)
+                        time_diff = CONFIG_MEASURE_EVERY_N_SECONDS;
                     last_time = element->time;
                     double_totals[0] += TO_DOUBLE_FROM_TWO_UINTS(element->cpu_usage);
                     double_totals[1] += TO_DOUBLE_FROM_TWO_UINTS(element->cpu_iowait);
@@ -627,9 +629,9 @@ monitoring_server PATH MAX_CHILDREN [LISTEN_PORT]
 */
 int main(int argc, char **argv) {
     COMPILE_TIME_CHECKS
-    uint32 max_children;
+    int32 max_children;
     uint16 port = 9999, expected_len, body;
-    if ((argc != 3 && argc != 4) || chdir(argv[1]) || !(max_children = strtoul(argv[2], NULL, 10)) || (argc == 4 && !(port = (uint16)strtoul(argv[3], NULL, 10)))) {
+    if ((argc != 3 && argc != 4) || chdir(argv[1]) || !(max_children = (int32)strtoul(argv[2], NULL, 10)) || (argc == 4 && !(port = (uint16)strtoul(argv[3], NULL, 10)))) {
         write(2, SLEN("Missing/invalid argument(s)!\nmonitoring_server PATH MAX_CHILDREN [LISTEN_PORT]\nFor details, look into the README.\n"));
         return 99;
     }

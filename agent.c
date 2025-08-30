@@ -332,7 +332,7 @@ void get_disk_info(void) {
 
 bool sock_ready(int fd, bool read) {
     struct pollfd pfd = { .fd = fd, .events = read ? POLLIN : POLLOUT, .revents = 0 };
-    if (poll(&pfd, 1, 2500) > 0)
+    if (poll(&pfd, 1, 3000) > 0)
         return (pfd.revents & (read ? POLLIN : POLLOUT)) && !(pfd.revents & (POLLERR | POLLHUP | POLLNVAL));
     return false;
 }

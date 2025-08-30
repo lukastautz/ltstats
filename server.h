@@ -55,7 +55,7 @@ typedef void (*sighandler_t)(int);
 #define http_buf_compare(s1, s) (((uint16)len >= strlen(s1) + strlen(s)) && !memcmp(http_buf + strlen(s1), SLEN(s)))
 #define SECTOR_SIZE 512
 
-_Atomic uint32 children;
+_Atomic int32 children;
 
 _Atomic bool *data_json_changed;
 _Atomic uint32 *monitoring_reload;
