@@ -96,7 +96,11 @@ void admin_process_request(uint8 state) {
     } else if (http_buf_compare("", "POST /admin/data")) {
         json_object *new = parse_body_json(), *hash;
         const char *hash_str;
-        while (!new && body_read_cont && sock_ready(client, false, 10) && (len = read(client, http_buf, sizeof(http_buf) - 1)) > 0)
+        int opts = fcntl(client, F_GETFL);
+        if (opts < 0)
+            return;
+        fcntl(client, F_SETFL, opts & (~O_NONBLOCK)); // set to blocking, otherwise it doesn't work with some (old) kernel versions
+        while (!new && body_read_cont && (len = read(client, http_buf, sizeof(http_buf) - 1)) > 0)
             new = parse_additional();
         if (!new || !json_object_is_type(new, json_type_object) || !json_object_object_get_ex(new, "hash", &hash) || !json_object_is_type(hash, json_type_string) || json_object_get_string_len(hash) != 64 || !(hash_str = json_object_get_string(hash))) {
             __atomic_store_n(admin_proc, false, __ATOMIC_RELAXED);
