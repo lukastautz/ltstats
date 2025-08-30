@@ -38,7 +38,7 @@ typedef struct __attribute__((__packed__)) {
     uint32_t ts_frac;
 } ntp_packet;
 
-void ntp() {
+uint8_t ntp() {
     int sock = -1, status;
     struct addrinfo hints, *addrinfo, *cur;
     memset(&hints, 0, sizeof(hints));
@@ -49,7 +49,7 @@ void ntp() {
     ntp_packet packet = { .flags = NTP_FLAGS };
     struct timeval time = { .tv_sec = 1, .tv_usec = 0 };
     if ((status = getaddrinfo(NTP_SERVER, "123", &hints, &addrinfo)) != 0)
-        return;
+        return 0;
     for (cur = addrinfo; cur; cur = cur->ai_next) {
         sock = socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
         if (sock != -1)
@@ -57,14 +57,14 @@ void ntp() {
     }
     if (sock == -1) {
         freeaddrinfo(addrinfo);
-        return;
+        return 0;
     }
     if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &time, sizeof(time)) < 0 ||
         sendto(sock, &packet, sizeof(packet), 0, cur->ai_addr, cur->ai_addrlen) != sizeof(packet) ||
         recvfrom(sock, &packet, sizeof(packet), 0, NULL, NULL) != sizeof(packet)) {
         freeaddrinfo(addrinfo);
         close(sock);
-        return;
+        return 0;
     }
     freeaddrinfo(addrinfo);
     close(sock);
@@ -73,11 +73,20 @@ void ntp() {
     time.tv_sec = packet.ts_secs - UNIX_OFFSET;
     time.tv_usec = (uint32_t)((double)packet.ts_frac * 1.0e6 / (double)(1LL << 32)); 
     settimeofday(&time, NULL);
+    return 1;
 }
 
 int main() {
+    if (geteuid()) {
+        write(2, "Running this program as root is required to be able to change the time.\n", strlen("Running this program as root is required to be able to change the time.\n"));
+        return 1;
+    }
+    while (!ntp())
+        sleep(2); // Sync time at the start (potentially boot) and don't sleep 300s
     for (;;) {
-        ntp();
-        sleep(300);
+        if (!ntp())
+            sleep(60);
+        else
+            sleep(300);
     }
 }
