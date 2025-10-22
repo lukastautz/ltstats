@@ -20,6 +20,7 @@ LTstats is divided into an agent part that runs on the systems that should be mo
 - [NTP](#ntp)
 - [Scalability](#scalability)
 - [Manual installation](#manual-installation)
+- [Compiling](#compiling)
 - [Security](#security)
 - [Requirements](#requirements)
 - [Notifications](#notifications)
@@ -83,6 +84,11 @@ If you want to manually install the server, you have to do a few things:
 {"time":1,"hash":"SHA256_HASH_HEX","monitors":{},"pages":{"main":["Main page",true,[]]},"hide":[],"notifications":{"every":60,"exec":[],"sample":30},"copy":""}
 ```
 - Start the server with the following arguments: `{PATH} {MAX_CHILDREN (a reasonable value is 10 to 200)} {PORT}`
+
+## Compiling
+On most systems (you need to have installed make, gcc, cmake and curl), it's enough to run `make`. On Alpine, however, there's some weird behaviour causing `bin/musl-gcc` to not be created and it trying to link against a non-existent library by default, at the time of writing this README, the workaround used by `make inside_alpine` is working.
+If you encounter any issues, feel free to open an issue.
+It is not recommended to compile LTstats as root, while it shouldn't cause any problems, there might be bugs in the compilation process of LTstats or in any of the used libraries, especially in uncommon environments.
 
 ## Security
 No special privileges are required for the agent and server, by default it will create and use the ltstats user. Regarding the bash scripts and precompiled binaries: to ensure that neither has been tampered with, checksums are used. Additionally, the binaries should be reproducible, meaning that if you compile them yourself with the same version of all tools (debian stable is used for the releases) and libraries, it should result in the exact same binaries.
