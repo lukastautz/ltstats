@@ -5,8 +5,8 @@ BEARSSL_COMMIT=3c040368f6791553610e362401db1efff4b4c5b8
 JSON_C_COMMIT=2372e9518e6ba95b48d37ec162bc7d93b297b52f
 CC=${MUSL}
 CFLAGS=-fno-strict-aliasing -static -Ofast -O3 -Wall -Wextra -pedantic -Werror -Wno-deprecated-declarations
-default: ${MUSL} ${ELFTRUNC} ltstats_agent ltstats_server ltstats_ntp
-ltstats_agent: ${MUSL} ${ELFTRUNC} libbearssl.a TA.h
+default: ${MUSL} ltstats_agent ltstats_server ltstats_ntp
+ltstats_agent: ${MUSL} libbearssl.a TA.h
 	${CC} ${CFLAGS} agent.c libbearssl.a -o ltstats_agent
 	strip ltstats_agent
 libbearssl.a:
@@ -26,8 +26,11 @@ $(MUSL):
 	tar xf musl.tar.gz
 	rm musl.tar.gz
 	mv musl-${MUSL_VERSION} musl
-	sh -c 'cd musl; ./configure --prefix="$$(pwd)"; make install -j$$(nproc)'
-ltstats_ntp: ${MUSL} ${ELFTRUNC}
+	sh -c 'cd musl; ./configure --prefix="$$(pwd)" --syslibdir="$$(pwd)/lib"; make install -j$$(nproc)'
+alpine_musl: ${MUSL}
+	sh -c 'cd musl; make obj/musl-gcc lib/musl-gcc.specs; echo -e "*link_ssp:\n%{fstack-protector|fstack-protector-all|fstack-protector-strong|fstack-protector-explicit:}" >> lib/musl-gcc.specs; mkdir bin; cp obj/musl-gcc bin'
+inside_alpine: alpine_musl ltstats_agent ltstats_server ltstats_ntp
+ltstats_ntp: ${MUSL}
 	${CC} ${CFLAGS} ntp.c -o ltstats_ntp
 	strip ltstats_ntp
 clean:
